@@ -1,0 +1,40 @@
+name: CodSpeed
+permissions:
+  contents: read
+  id-token: write
+'on':
+  workflow_dispatch: null
+  pull_request:
+    types:
+    - opened
+    - synchronize
+  push:
+    branches:
+    - main
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha
+    }}
+  cancel-in-progress: ${{ github.ref_name != 'main' }}
+defaults:
+  run:
+    shell: bash
+jobs:
+  benchmarks:
+    name: Run benchmarks
+    runs-on: ubuntu-latest
+    steps:
+    - uses: taiki-e/checkout-action@b13d20b7cda4e2f325ef19895128f7ff735c0b3d
+    - name: Setup Rust toolchain and cargo-codspeed
+      uses: moonrepo/setup-rust@ede6de03b203084ede7b8af8864c4448c8e53345
+      with:
+        channel: stable
+        cache-target: release
+        bins: cargo-codspeed
+    - name: Build the benchmark target(s)
+      run: cargo codspeed build
+    - name: Run the benchmarks
+      uses: CodSpeedHQ/action@346a2d8a8d9d38909abd0bc3d23f773110f076ad
+      with:
+        upload-url: ${{ secrets.CODSPEED_STAGING_UPLOAD_URL }}
+        mode: simulation
+        run: cargo codspeed run
